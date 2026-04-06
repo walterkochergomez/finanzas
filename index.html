@@ -3,55 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Organizador de Gastos</title>
+    <title>Expense Tracker Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    <!-- Librería para el gráfico de estadísticas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Control de Gastos</h1>
-            <nav>
-                <button id="btn-registro" class="tab-btn active">Registro</button>
-                <button id="btn-estadisticas" class="tab-btn">Estadísticas</button>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-rocket"></i>
+                <span>Gastos AI</span>
+            </div>
+            <nav class="menu-nav">
+                <button id="btn-registro" class="nav-item active">
+                    <i class="fa-solid fa-pen-to-square"></i> Registro
+                </button>
+                <button id="btn-estadisticas" class="nav-item">
+                    <i class="fa-solid fa-chart-pie"></i> Estadísticas
+                </button>
             </nav>
-        </header>
+        </aside>
 
-        <!-- Pestaña 1: Registro de Gastos -->
-        <section id="tab-registro" class="tab-content active">
-            <form id="form-gasto">
-                <input type="text" id="descripcion" placeholder="¿En qué gastaste?" required>
-                <input type="number" id="monto" placeholder="Monto ($)" required>
-                <select id="categoria" required>
-                    <option value="" disabled selected>Selecciona una categoría</option>
-                    <option value="Alimentos">Alimentos</option>
-                    <option value="Hogar">Gastos del Hogar</option>
-                    <option value="Ocio">Ocio</option>
-                    <option value="Transporte">Transporte</option>
-                    <option value="Salud">Salud</option>
-                    <option value="Otros">Otros</option>
-                </select>
-                <button type="submit">Guardar Gasto</button>
-            </form>
+        <main class="main-content">
+            <section id="tab-registro" class="content-section active">
+                <header class="section-header">
+                    <h2>Nuevo Movimiento</h2>
+                    <p>Registra tus gastos y mantén el control.</p>
+                </header>
 
-            <div class="historial">
-                <h2>Historial Reciente</h2>
-                <ul id="lista-gastos"></ul>
-            </div>
-        </section>
+                <form id="form-gasto" class="glass-card">
+                    <div class="form-group">
+                        <label>Descripción</label>
+                        <input type="text" id="descripcion" placeholder="Ej: Suscripción Netflix" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Monto</label>
+                            <input type="number" id="monto" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoría</label>
+                            <select id="categoria" required>
+                                <option value="Alimentos">🍎 Alimentos</option>
+                                <option value="Hogar">🏠 Hogar</option>
+                                <option value="Ocio">🎮 Ocio</option>
+                                <option value="Transporte">🚗 Transporte</option>
+                                <option value="Salud">💊 Salud</option>
+                                <option value="Otros">✨ Otros</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Añadir Gasto</button>
+                </form>
 
-        <!-- Pestaña 2: Estadísticas -->
-        <section id="tab-estadisticas" class="tab-content">
-            <div class="resumen">
-                <h2>Total Gastado: $<span id="total-gastado">0</span></h2>
-            </div>
-            <div class="grafico-container">
-                <canvas id="grafico-categorias"></canvas>
-            </div>
-        </section>
+                <div class="history-section">
+                    <h3>Actividad Reciente</h3>
+                    <div id="lista-gastos" class="history-grid"></div>
+                </div>
+            </section>
+
+            <section id="tab-estadisticas" class="content-section">
+                <header class="section-header">
+                    <h2>Análisis de Datos</h2>
+                    <p>Visualiza dónde se va tu dinero.</p>
+                </header>
+                <div class="stats-grid">
+                    <div class="glass-card stat-card">
+                        <span>Gasto Total</span>
+                        <h2 id="total-gastado">$0</h2>
+                    </div>
+                    <div class="glass-card chart-card">
+                        <canvas id="grafico-categorias"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
