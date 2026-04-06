@@ -186,38 +186,73 @@
                 </div>
             </section>
 
-            <!-- PESTAÑA: ESTADÍSTICAS -->
-            <section id="tab-estadisticas" class="content-section">
-                <header class="section-header">
-                    <h2>Dashboard Financiero</h2>
-                </header>
-                
-                <div class="stats-grid">
-                    <div class="row-flex mb-2">
-                        <div class="glass-card stat-card">
-                            <span>Total Ingresos</span>
-                            <h2 id="total-ingresos-stat" class="text-success">$0</h2>
-                        </div>
-                        <div class="glass-card stat-card">
-                            <span>Gastos Reales</span>
-                            <h2 id="total-gastos-stat" class="text-accent">$0</h2>
-                        </div>
-                        <div class="glass-card stat-card">
-                            <span>Pasivos Pendientes</span>
-                            <h2 id="total-deudas-stat" class="text-danger">$0</h2>
-                        </div>
-                    </div>
+<!-- PESTAÑA: ESTADÍSTICAS -->
+<section id="tab-estadisticas" class="content-section">
+    <header class="section-header">
+        <h2>Dashboard Financiero</h2>
+        <p>Indicadores Clave de Rendimiento (KPIs) y análisis de patrimonio.</p>
+    </header>
+    
+    <div class="stats-grid">
+        <!-- Fila 1: KPIs Principales -->
+        <div class="kpi-row">
+            <div class="glass-card stat-card">
+                <div class="stat-icon text-success"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                <span>Ingresos Totales</span>
+                <h2 id="kpi-ingresos" class="text-success">$0</h2>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-icon text-accent"><i class="fa-solid fa-wallet"></i></div>
+                <span>Gastos Totales</span>
+                <h2 id="kpi-gastos" class="text-accent">$0</h2>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-icon text-danger"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                <span>Deuda Pendiente</span>
+                <h2 id="kpi-deudas" class="text-danger">$0</h2>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-icon" style="color: #f59e0b;"><i class="fa-solid fa-scale-balanced"></i></div>
+                <span>Flujo de Caja</span>
+                <h2 id="kpi-flujo" style="color: #f59e0b;">$0</h2>
+            </div>
+        </div>
 
-                    <div class="row-flex">
-                        <div class="glass-card chart-card">
-                            <canvas id="grafico-categorias"></canvas>
-                        </div>
-                        <div class="glass-card chart-card">
-                            <canvas id="grafico-comparativo"></canvas>
-                        </div>
-                    </div>
+        <!-- Fila 2: Métricas Avanzadas (Barras) -->
+        <div class="kpi-row">
+            <div class="glass-card metric-card">
+                <div class="metric-info">
+                    <span>Tasa de Ahorro (Margen Libre)</span>
+                    <h3 id="kpi-ahorro">0%</h3>
                 </div>
-            </section>
+                <div class="progress-bar">
+                    <div id="bar-ahorro" class="progress-fill bg-success" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div class="glass-card metric-card">
+                <div class="metric-info">
+                    <span>Nivel de Endeudamiento (Riesgo)</span>
+                    <h3 id="kpi-endeudamiento">0%</h3>
+                </div>
+                <div class="progress-bar">
+                    <div id="bar-endeudamiento" class="progress-fill bg-success" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila 3: Gráficos -->
+        <div class="row-flex">
+            <div class="glass-card chart-card">
+                <h3 class="chart-title">Distribución de Gastos</h3>
+                <canvas id="grafico-categorias"></canvas>
+            </div>
+            <div class="glass-card chart-card">
+                <h3 class="chart-title">Balance Mensual</h3>
+                <canvas id="grafico-comparativo"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
         </main>
     </div>
 
