@@ -107,3 +107,31 @@ input:focus, select:focus { border-color: var(--accent-color); }
 .stat-card h2 { font-size: 2.5rem; margin-top: 8px; }
 .chart-card { flex: 1; min-height: 300px; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
 canvas { max-width: 100% !important; max-height: 300px !important; }
+
+/* --- DASHBOARD PROFESIONAL --- */
+.kpi-row { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); 
+    gap: 1rem; 
+    margin-bottom: 1rem; 
+}
+.stat-icon { font-size: 1.5rem; margin-bottom: 8px; opacity: 0.9; }
+.stat-card { padding: 1.5rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.stat-card span { font-size: 0.75rem; font-weight: 600; letter-spacing: 1px; }
+.stat-card h2 { font-size: 1.6rem; margin-top: 5px; word-break: break-all;}
+
+/* Tarjetas de Barras de Progreso */
+.metric-card { padding: 1.5rem; display: flex; flex-direction: column; gap: 12px; }
+.metric-info { display: flex; justify-content: space-between; align-items: center; }
+.metric-info span { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+.metric-info h3 { font-size: 1.2rem; }
+.progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 10px; transition: width 0.8s ease, background-color 0.3s ease; }
+
+/* Colores de Alerta */
+.bg-success { background-color: var(--success); }
+.bg-danger { background-color: var(--danger); }
+.bg-warning { background-color: #f59e0b; }
+
+.chart-title { font-size: 1rem; color: var(--text-dim); margin-bottom: 15px; text-align: center; width: 100%; }
+.chart-card { flex-direction: column; justify-content: flex-start; }
