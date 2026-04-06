@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc,orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // === CONFIGURACIÓN FIREBASE (RELLENA ESTO) ===
 const firebaseConfig = {
@@ -166,13 +166,62 @@ function renderItem(id, col, desc, monto, cat) {
     </div>`;
 }
 
+// --- RENDERIZAR ITEM DE DEUDA CON BOTÓN DE ABONO ---
 function renderDeudaItem(id, desc, total, pagado, pendiente, arrastre) {
+    // Solo mostramos el botón de abonar si hay deuda pendiente
+    const btnAbonar = pendiente > 0 
+        ? `<button class="btn-abono" onclick="abonarDeuda('${id}', ${pagado}, ${total})" title="Realizar Abono"><i class="fa-solid fa-plus"></i></button>` 
+        : '';
+
+    const estadoTexto = pendiente <= 0 ? `<span style="color:#10b981">Saldado</span>` : `<span class="text-danger">$${pendiente}</span>`;
+
     return `<div class="gasto-item ${arrastre ? 'arrastre' : ''}">
-        <div class="gasto-info"><h4>${desc} ${arrastre ? '(Arrastre)' : ''}</h4><span>Total: $${total} | Pagado: $${pagado}</span></div>
-        <div class="gasto-monto"><span class="text-danger">$${pendiente}</span>
-        <button class="btn-delete" onclick="borrarDoc('deudas','${id}')"><i class="fa-solid fa-trash"></i></button></div>
+        <div class="gasto-info">
+            <h4>${desc} ${arrastre ? '(Arrastre)' : ''}</h4>
+            <span>Total: $${total.toLocaleString()} | Pagado:$${pagado.toLocaleString()}</span>
+        </div>
+        <div class="gasto-monto">
+            ${estadoTexto}
+            <div class="action-buttons">
+                ${btnAbonar}
+                <button class="btn-delete" onclick="borrarDoc('deudas','${id}')"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>
     </div>`;
 }
+
+// --- LÓGICA PARA REALIZAR EL ABONO ---
+window.abonarDeuda = async (id, pagadoActual, total) => {
+    const pendiente = total - pagadoActual;
+    const ingreso = prompt(`Deuda pendiente: $${pendiente.toLocaleString()}\n¿Cuánto dinero deseas abonar ahora?`);
+    
+    if (ingreso !== null && ingreso !== "") {
+        const montoAbono = parseFloat(ingreso);
+        
+        if (!isNaN(montoAbono) && montoAbono > 0) {
+            if (montoAbono > pendiente) {
+                alert("No puedes abonar más del total que debes.");
+                return;
+            }
+            
+            const nuevoPagado = pagadoActual + montoAbono;
+            
+            try {
+                // Actualizamos el documento en Firebase
+                await updateDoc(doc(db, "deudas", id), {
+                    montoPagado: nuevoPagado
+                });
+                // Recargamos los datos para ver los cambios
+                cargarDatos(document.getElementById('mes-actual').value);
+            } catch (error) {
+                console.error("Error al actualizar la deuda:", error);
+                alert("Hubo un error al guardar el abono.");
+            }
+        } else {
+            alert("Por favor, ingresa un monto válido mayor a 0.");
+        }
+    }
+};
 
 // Global para borrar
 window.borrarDoc = async (col, id) => {
