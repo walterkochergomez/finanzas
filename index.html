@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizador de Gastos</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Librería para el gráfico de estadísticas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Control de Gastos</h1>
+            <nav>
+                <button id="btn-registro" class="tab-btn active">Registro</button>
+                <button id="btn-estadisticas" class="tab-btn">Estadísticas</button>
+            </nav>
+        </header>
+
+        <!-- Pestaña 1: Registro de Gastos -->
+        <section id="tab-registro" class="tab-content active">
+            <form id="form-gasto">
+                <input type="text" id="descripcion" placeholder="¿En qué gastaste?" required>
+                <input type="number" id="monto" placeholder="Monto ($)" required>
+                <select id="categoria" required>
+                    <option value="" disabled selected>Selecciona una categoría</option>
+                    <option value="Alimentos">Alimentos</option>
+                    <option value="Hogar">Gastos del Hogar</option>
+                    <option value="Ocio">Ocio</option>
+                    <option value="Transporte">Transporte</option>
+                    <option value="Salud">Salud</option>
+                    <option value="Otros">Otros</option>
+                </select>
+                <button type="submit">Guardar Gasto</button>
+            </form>
+
+            <div class="historial">
+                <h2>Historial Reciente</h2>
+                <ul id="lista-gastos"></ul>
+            </div>
+        </section>
+
+        <!-- Pestaña 2: Estadísticas -->
+        <section id="tab-estadisticas" class="tab-content">
+            <div class="resumen">
+                <h2>Total Gastado: $<span id="total-gastado">0</span></h2>
+            </div>
+            <div class="grafico-container">
+                <canvas id="grafico-categorias"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
