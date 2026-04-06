@@ -267,18 +267,64 @@ window.abonarDeuda = async (id, pagadoActual, total) => {
     }
 };
 
-// --- GRÁFICOS ---
-function renderCharts(i, g, d, cats) {
-    document.getElementById('total-ingresos-stat').innerText = `$${i.toLocaleString()}`;
-    document.getElementById('total-gastos-stat').innerText = `$${g.toLocaleString()}`;
-    document.getElementById('total-deudas-stat').innerText = `$${d.toLocaleString()}`;
+// --- DASHBOARD PROFESIONAL (KPIs y GRÁFICOS) ---
+function renderCharts(ingresos, gastos, deudas, cats) {
+    // 1. Cálculos de KPIs Financieros
+    const flujoCaja = ingresos - gastos;
+    
+    // Tasa de ahorro: (Flujo de caja / Ingresos) * 100
+    let tasaAhorro = ingresos > 0 ? (flujoCaja / ingresos) * 100 : 0;
+    if (tasaAhorro < 0) tasaAhorro = 0; // Si hay pérdidas, el ahorro es 0%
+    
+    // Nivel de Endeudamiento: (Deudas / Ingresos) * 100
+    let nivelEndeudamiento = ingresos > 0 ? (deudas / ingresos) * 100 : (deudas > 0 ? 100 : 0);
 
+    // 2. Inyectar datos en el HTML
+    document.getElementById('kpi-ingresos').innerText = `$${ingresos.toLocaleString()}`;
+    document.getElementById('kpi-gastos').innerText = `$${gastos.toLocaleString()}`;
+    document.getElementById('kpi-deudas').innerText = `$${deudas.toLocaleString()}`;
+    
+    const elFlujo = document.getElementById('kpi-flujo');
+    elFlujo.innerText = `$${flujoCaja.toLocaleString()}`;
+    // Si el flujo de caja es negativo, se pone en rojo automáticamente
+    elFlujo.style.color = flujoCaja >= 0 ? 'var(--success)' : 'var(--danger)'; 
+
+    document.getElementById('kpi-ahorro').innerText = `${tasaAhorro.toFixed(1)}%`;
+    document.getElementById('bar-ahorro').style.width = `${Math.min(tasaAhorro, 100)}%`;
+
+    document.getElementById('kpi-endeudamiento').innerText = `${nivelEndeudamiento.toFixed(1)}%`;
+    const barEndeudamiento = document.getElementById('bar-endeudamiento');
+    barEndeudamiento.style.width = `${Math.min(nivelEndeudamiento, 100)}%`;
+    
+    // 3. Lógica de colores de riesgo para la deuda
+    if (nivelEndeudamiento > 40) {
+        barEndeudamiento.className = 'progress-fill bg-danger'; // >40% Riesgo Alto
+    } else if (nivelEndeudamiento > 20) {
+        barEndeudamiento.className = 'progress-fill bg-warning'; // 20-40% Precaución
+    } else {
+        barEndeudamiento.className = 'progress-fill bg-success'; // <20% Saludable
+    }
+
+    // 4. Gráficos (Chart.js refinados)
     const c1 = document.getElementById('grafico-categorias').getContext('2d');
     if(chart1) chart1.destroy();
+    
+    const tieneGastos = Object.keys(cats).length > 0;
+    
     chart1 = new Chart(c1, {
         type: 'doughnut',
-        data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'], borderWidth: 0 }] },
-        options: { plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } } }
+        data: { 
+            labels: tieneGastos ? Object.keys(cats) : ['Sin datos'], 
+            datasets: [{ 
+                data: tieneGastos ? Object.values(cats) : [1], 
+                backgroundColor: tieneGastos ? ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'] : ['rgba(255,255,255,0.1)'], 
+                borderWidth: 0 
+            }] 
+        },
+        options: { 
+            plugins: { legend: { position: 'right', labels: { color: '#fff', font: {size: 11} } } },
+            cutout: '75%' // Hace la dona más delgada y elegante
+        }
     });
 
     const c2 = document.getElementById('grafico-comparativo').getContext('2d');
@@ -287,8 +333,19 @@ function renderCharts(i, g, d, cats) {
         type: 'bar',
         data: { 
             labels: ['Ingresos', 'Gastos', 'Deudas'], 
-            datasets: [{ data: [i, g, d], backgroundColor: ['#10b981', '#3b82f6', '#ef4444'], borderRadius: 6 }] 
+            datasets: [{ 
+                data: [ingresos, gastos, deudas], 
+                backgroundColor: ['#10b981', '#3b82f6', '#ef4444'], 
+                borderRadius: 6,
+                barPercentage: 0.5 // Hace las barras más finas
+            }] 
         },
-        options: { scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } }, x: { ticks: { color: '#fff' } } }, plugins: { legend: { display: false } } }
+        options: { 
+            scales: { 
+                y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }, 
+                x: { ticks: { color: '#fff' }, grid: { display: false } } 
+            }, 
+            plugins: { legend: { display: false } } 
+        }
     });
 }
