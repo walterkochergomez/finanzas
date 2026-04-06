@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// === CONFIGURACIÓN FIREBASE (RELLENA ESTO) ===
+// === CONFIGURACIÓN FIREBASE (RELLENA ESTO CON TUS DATOS) ===
 const firebaseConfig = {
   apiKey: "AIzaSyCO5b4r8U01bSum87YPhnj-CS80-qaGmNE",
   authDomain: "finanzas-67c25.firebaseapp.com",
@@ -24,14 +24,15 @@ let chart2 = null;
 // --- INICIALIZACIÓN E INTERFAZ ---
 const mesSelector = document.getElementById('mes-actual');
 const hoy = new Date();
+// Formatea el mes actual (ej: "2026-04")
 mesSelector.value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
 
-// Toggle Cuotas
+// Mostrar/Ocultar el campo de número de cuotas
 document.getElementById('es-cuotas').addEventListener('change', (e) => {
     document.getElementById('div-cuotas').style.display = e.target.checked ? 'flex' : 'none';
 });
 
-// Helper para sumar meses en formato "YYYY-MM"
+// Función para calcular los meses futuros en el sistema de cuotas
 function sumarMeses(periodo, mesesASumar) {
     let [year, month] = periodo.split('-').map(Number);
     month += mesesASumar;
@@ -77,6 +78,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.add('active');
         const target = btn.id.replace('btn-', 'tab-');
         document.getElementById(target).classList.add('active');
+        // Solo recargamos gráficos si entramos a estadísticas
         if(target === 'tab-estadisticas') cargarDatos(mesSelector.value);
     };
 });
@@ -104,7 +106,7 @@ document.getElementById('form-gasto').onsubmit = async (e) => {
     } catch (err) { console.error("Error guardando gasto:", err); }
 };
 
-// --- GUARDAR DEUDA (CON SOPORTE PARA CUOTAS) ---
+// --- GUARDAR DEUDA (CON SOPORTE PARA MÚLTIPLES CUOTAS) ---
 document.getElementById('form-deuda').onsubmit = async (e) => {
     e.preventDefault();
     if(!currentUser) return;
@@ -127,21 +129,24 @@ document.getElementById('form-deuda').onsubmit = async (e) => {
             const valorCuota = Math.round(montoTotal / numCuotas);
             const promesas = [];
             
+            // Creamos un documento individual para cada cuota en los meses correspondientes
             for (let i = 0; i < numCuotas; i++) {
                 const periodoCuota = sumarMeses(periodoInicio, i);
                 const cuotaData = {
                     userId: currentUser.uid,
                     descripcion: `${descripcionBase} (Cuota ${i + 1}/${numCuotas})`,
                     montoTotal: valorCuota,
-                    montoPagado: i === 0 ? montoPagado : 0, 
+                    montoPagado: i === 0 ? montoPagado : 0, // Solo la primera cuota recibe el abono inicial
                     periodo: periodoCuota,
                     fecha: Date.now() + i
                 };
                 promesas.push(addDoc(collection(db, "deudas"), cuotaData));
             }
+            // Espera a que todas las cuotas se suban a Firebase
             await Promise.all(promesas); 
             
         } else {
+            // Deuda de un solo pago
             const nuevaDeuda = {
                 userId: currentUser.uid,
                 descripcion: descripcionBase,
@@ -165,11 +170,11 @@ document.getElementById('form-deuda').onsubmit = async (e) => {
     }
 };
 
-// --- CARGA DE DATOS ---
+// --- CARGAR DATOS Y PROCESAR ARRASTRES ---
 async function cargarDatos(periodo) {
     if(!currentUser) return;
 
-    // Obtener Gastos (Se removió orderBy para evitar requerir el Índice en Firebase)
+    // 1. Obtener Gastos (Buscamos directo por periodo para evitar requerir el Índice en Firebase)
     const qG = query(collection(db, "gastos"), where("userId", "==", currentUser.uid), where("periodo", "==", periodo));
     const snapG = await getDocs(qG);
     
@@ -185,7 +190,7 @@ async function cargarDatos(periodo) {
         listaG.innerHTML += renderItem(docSnap.id, 'gastos', d.descripcion, d.monto, d.categoria);
     });
 
-    // Obtener Deudas
+    // 2. Obtener Deudas (Traemos todas para calcular los arrastres pendientes)
     const qD = query(collection(db, "deudas"), where("userId", "==", currentUser.uid));
     const snapD = await getDocs(qD);
     
@@ -197,6 +202,7 @@ async function cargarDatos(periodo) {
         const d = docSnap.data();
         const pendiente = d.montoTotal - d.montoPagado;
         
+        // Muestra la deuda si es de este mes, o si es de meses anteriores y no se ha pagado (arrastre)
         if(d.periodo === periodo || (d.periodo < periodo && pendiente > 0)) {
             const esArrastre = d.periodo < periodo;
             totalDPendiente += pendiente;
@@ -207,7 +213,7 @@ async function cargarDatos(periodo) {
     renderCharts(totalG, totalDPendiente, catsG);
 }
 
-// --- FUNCIONES RENDER Y ACCIONES GLOBALES ---
+// --- FUNCIONES DE RENDERIZADO VISUAL ---
 function renderItem(id, col, desc, monto, cat) {
     return `<div class="gasto-item">
         <div class="gasto-info"><h4>${desc}</h4><span>${cat}</span></div>
@@ -217,9 +223,11 @@ function renderItem(id, col, desc, monto, cat) {
 }
 
 function renderDeudaItem(id, desc, total, pagado, pendiente, arrastre) {
+    // Solo muestra el botón de abonar si hay deuda pendiente
     const btnAbonar = pendiente > 0 
         ? `<button class="btn-abono" onclick="abonarDeuda('${id}', ${pagado}, ${total})" title="Realizar Abono"><i class="fa-solid fa-plus"></i></button>` 
         : '';
+        
     const estadoTexto = pendiente <= 0 ? `<span style="color:#10b981">Saldado</span>` : `<span class="text-danger">$${pendiente.toLocaleString()}</span>`;
 
     return `<div class="gasto-item ${arrastre ? 'arrastre' : ''}">
@@ -237,6 +245,7 @@ function renderDeudaItem(id, desc, total, pagado, pendiente, arrastre) {
     </div>`;
 }
 
+// --- ACCIONES GLOBALES (Expuestas a Window para funcionar en botones HTML) ---
 window.borrarDoc = async (col, id) => {
     if(confirm("¿Eliminar este registro?")) {
         await deleteDoc(doc(db, col, id));
@@ -245,4 +254,53 @@ window.borrarDoc = async (col, id) => {
 };
 
 window.abonarDeuda = async (id, pagadoActual, total) => {
-    const
+    const pendiente = total - pagadoActual;
+    const ingreso = prompt(`Deuda pendiente: $${pendiente.toLocaleString()}\n¿Cuánto dinero deseas abonar ahora?`);
+    
+    if (ingreso !== null && ingreso !== "") {
+        const montoAbono = parseFloat(ingreso);
+        
+        if (!isNaN(montoAbono) && montoAbono > 0) {
+            if (montoAbono > pendiente) {
+                alert("No puedes abonar más del total que debes.");
+                return;
+            }
+            
+            const nuevoPagado = pagadoActual + montoAbono;
+            
+            try {
+                // Actualiza el monto pagado en Firebase
+                await updateDoc(doc(db, "deudas", id), { montoPagado: nuevoPagado });
+                cargarDatos(mesSelector.value);
+            } catch (error) {
+                console.error("Error al actualizar la deuda:", error);
+                alert("Hubo un error al guardar el abono.");
+            }
+        } else {
+            alert("Por favor, ingresa un monto válido mayor a 0.");
+        }
+    }
+};
+
+// --- GRÁFICOS (Chart.js) ---
+function renderCharts(g, d, cats) {
+    document.getElementById('total-gastos-stat').innerText = `$${g.toLocaleString()}`;
+    document.getElementById('total-deudas-stat').innerText = `$${d.toLocaleString()}`;
+
+    // Destruir gráficos anteriores si existen para evitar superposición
+    const c1 = document.getElementById('grafico-categorias').getContext('2d');
+    if(chart1) chart1.destroy();
+    chart1 = new Chart(c1, {
+        type: 'doughnut',
+        data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'], borderWidth: 0 }] },
+        options: { plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } } }
+    });
+
+    const c2 = document.getElementById('grafico-comparativo').getContext('2d');
+    if(chart2) chart2.destroy();
+    chart2 = new Chart(c2, {
+        type: 'bar',
+        data: { labels: ['Gastos del Mes', 'Deudas Pendientes'], datasets: [{ data: [g, d], backgroundColor: ['#3b82f6', '#ef4444'], borderRadius: 6 }] },
+        options: { scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } }, x: { ticks: { color: '#fff' } } }, plugins: { legend: { display: false } } }
+    });
+}
