@@ -1,10 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc,orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // === CONFIGURACIÓN FIREBASE (RELLENA ESTO) ===
 const firebaseConfig = {
-    apiKey: "AIzaSyCO5b4r8U01bSum87YPhnj-CS80-qaGmNE",
+  apiKey: "AIzaSyCO5b4r8U01bSum87YPhnj-CS80-qaGmNE",
   authDomain: "finanzas-67c25.firebaseapp.com",
   projectId: "finanzas-67c25",
   storageBucket: "finanzas-67c25.firebasestorage.app",
@@ -21,10 +21,26 @@ let currentUser = null;
 let chart1 = null;
 let chart2 = null;
 
-// Selectores
+// --- INICIALIZACIÓN E INTERFAZ ---
 const mesSelector = document.getElementById('mes-actual');
 const hoy = new Date();
 mesSelector.value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+
+// Toggle Cuotas
+document.getElementById('es-cuotas').addEventListener('change', (e) => {
+    document.getElementById('div-cuotas').style.display = e.target.checked ? 'flex' : 'none';
+});
+
+// Helper para sumar meses en formato "YYYY-MM"
+function sumarMeses(periodo, mesesASumar) {
+    let [year, month] = periodo.split('-').map(Number);
+    month += mesesASumar;
+    while (month > 12) { 
+        month -= 12; 
+        year += 1; 
+    }
+    return `${year}-${String(month).padStart(2, '0')}`;
+}
 
 // --- AUTENTICACIÓN ---
 const loginBtn = document.getElementById('btn-login');
@@ -41,14 +57,14 @@ document.getElementById('btn-logout').onclick = () => signOut(auth);
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUser = user;
-        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('login-screen').classList.remove('active');
         document.getElementById('app-screen').style.display = 'flex';
         document.getElementById('user-name').innerText = user.displayName;
         document.getElementById('user-avatar').src = user.photoURL;
         cargarDatos(mesSelector.value);
     } else {
         currentUser = null;
-        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('login-screen').classList.add('active');
         document.getElementById('app-screen').style.display = 'none';
     }
 });
@@ -88,39 +104,73 @@ document.getElementById('form-gasto').onsubmit = async (e) => {
     } catch (err) { console.error("Error guardando gasto:", err); }
 };
 
-// --- GUARDAR DEUDA (CORREGIDO PARA ABONOS $0) ---
+// --- GUARDAR DEUDA (CON SOPORTE PARA CUOTAS) ---
 document.getElementById('form-deuda').onsubmit = async (e) => {
     e.preventDefault();
     if(!currentUser) return;
 
+    const descripcionBase = document.getElementById('desc-deuda').value;
     const montoTotal = parseFloat(document.getElementById('monto-deuda').value);
     const abonoInput = document.getElementById('pagado-deuda').value;
-    // Si el campo está vacío, el abono es 0
     const montoPagado = abonoInput === "" ? 0 : parseFloat(abonoInput);
-
-    const nuevaDeuda = {
-        userId: currentUser.uid,
-        descripcion: document.getElementById('desc-deuda').value,
-        montoTotal: montoTotal,
-        montoPagado: montoPagado,
-        periodo: mesSelector.value,
-        fecha: Date.now()
-    };
+    const periodoInicio = mesSelector.value;
+    const esCuotas = document.getElementById('es-cuotas').checked;
 
     try {
-        await addDoc(collection(db, "deudas"), nuevaDeuda);
+        if (esCuotas) {
+            const numCuotas = parseInt(document.getElementById('num-cuotas').value);
+            if (isNaN(numCuotas) || numCuotas < 2) {
+                alert("Ingresa una cantidad de cuotas válida (mínimo 2).");
+                return;
+            }
+            
+            const valorCuota = Math.round(montoTotal / numCuotas);
+            const promesas = [];
+            
+            for (let i = 0; i < numCuotas; i++) {
+                const periodoCuota = sumarMeses(periodoInicio, i);
+                const cuotaData = {
+                    userId: currentUser.uid,
+                    descripcion: `${descripcionBase} (Cuota ${i + 1}/${numCuotas})`,
+                    montoTotal: valorCuota,
+                    montoPagado: i === 0 ? montoPagado : 0, 
+                    periodo: periodoCuota,
+                    fecha: Date.now() + i
+                };
+                promesas.push(addDoc(collection(db, "deudas"), cuotaData));
+            }
+            await Promise.all(promesas); 
+            
+        } else {
+            const nuevaDeuda = {
+                userId: currentUser.uid,
+                descripcion: descripcionBase,
+                montoTotal: montoTotal,
+                montoPagado: montoPagado,
+                periodo: periodoInicio,
+                fecha: Date.now()
+            };
+            await addDoc(collection(db, "deudas"), nuevaDeuda);
+        }
+
         e.target.reset();
         document.getElementById('pagado-deuda').value = 0;
+        document.getElementById('es-cuotas').checked = false;
+        document.getElementById('div-cuotas').style.display = 'none';
         cargarDatos(mesSelector.value);
-    } catch (err) { console.error("Error guardando deuda:", err); }
+        
+    } catch (err) { 
+        console.error("Error guardando deuda:", err); 
+        alert("Hubo un error al registrar la deuda en la base de datos.");
+    }
 };
 
 // --- CARGA DE DATOS ---
 async function cargarDatos(periodo) {
     if(!currentUser) return;
 
-    // Obtener Gastos
-    const qG = query(collection(db, "gastos"), where("userId", "==", currentUser.uid), where("periodo", "==", periodo), orderBy("fecha", "desc"));
+    // Obtener Gastos (Se removió orderBy para evitar requerir el Índice en Firebase)
+    const qG = query(collection(db, "gastos"), where("userId", "==", currentUser.uid), where("periodo", "==", periodo));
     const snapG = await getDocs(qG);
     
     const listaG = document.getElementById('lista-gastos');
@@ -157,7 +207,7 @@ async function cargarDatos(periodo) {
     renderCharts(totalG, totalDPendiente, catsG);
 }
 
-// Auxiliares de renderizado
+// --- FUNCIONES RENDER Y ACCIONES GLOBALES ---
 function renderItem(id, col, desc, monto, cat) {
     return `<div class="gasto-item">
         <div class="gasto-info"><h4>${desc}</h4><span>${cat}</span></div>
@@ -166,18 +216,15 @@ function renderItem(id, col, desc, monto, cat) {
     </div>`;
 }
 
-// --- RENDERIZAR ITEM DE DEUDA CON BOTÓN DE ABONO ---
 function renderDeudaItem(id, desc, total, pagado, pendiente, arrastre) {
-    // Solo mostramos el botón de abonar si hay deuda pendiente
     const btnAbonar = pendiente > 0 
         ? `<button class="btn-abono" onclick="abonarDeuda('${id}', ${pagado}, ${total})" title="Realizar Abono"><i class="fa-solid fa-plus"></i></button>` 
         : '';
-
-    const estadoTexto = pendiente <= 0 ? `<span style="color:#10b981">Saldado</span>` : `<span class="text-danger">$${pendiente}</span>`;
+    const estadoTexto = pendiente <= 0 ? `<span style="color:#10b981">Saldado</span>` : `<span class="text-danger">$${pendiente.toLocaleString()}</span>`;
 
     return `<div class="gasto-item ${arrastre ? 'arrastre' : ''}">
         <div class="gasto-info">
-            <h4>${desc} ${arrastre ? '(Arrastre)' : ''}</h4>
+            <h4>${desc}</h4>
             <span>Total: $${total.toLocaleString()} | Pagado:$${pagado.toLocaleString()}</span>
         </div>
         <div class="gasto-monto">
@@ -190,40 +237,6 @@ function renderDeudaItem(id, desc, total, pagado, pendiente, arrastre) {
     </div>`;
 }
 
-// --- LÓGICA PARA REALIZAR EL ABONO ---
-window.abonarDeuda = async (id, pagadoActual, total) => {
-    const pendiente = total - pagadoActual;
-    const ingreso = prompt(`Deuda pendiente: $${pendiente.toLocaleString()}\n¿Cuánto dinero deseas abonar ahora?`);
-    
-    if (ingreso !== null && ingreso !== "") {
-        const montoAbono = parseFloat(ingreso);
-        
-        if (!isNaN(montoAbono) && montoAbono > 0) {
-            if (montoAbono > pendiente) {
-                alert("No puedes abonar más del total que debes.");
-                return;
-            }
-            
-            const nuevoPagado = pagadoActual + montoAbono;
-            
-            try {
-                // Actualizamos el documento en Firebase
-                await updateDoc(doc(db, "deudas", id), {
-                    montoPagado: nuevoPagado
-                });
-                // Recargamos los datos para ver los cambios
-                cargarDatos(document.getElementById('mes-actual').value);
-            } catch (error) {
-                console.error("Error al actualizar la deuda:", error);
-                alert("Hubo un error al guardar el abono.");
-            }
-        } else {
-            alert("Por favor, ingresa un monto válido mayor a 0.");
-        }
-    }
-};
-
-// Global para borrar
 window.borrarDoc = async (col, id) => {
     if(confirm("¿Eliminar este registro?")) {
         await deleteDoc(doc(db, col, id));
@@ -231,23 +244,5 @@ window.borrarDoc = async (col, id) => {
     }
 };
 
-function renderCharts(g, d, cats) {
-    document.getElementById('total-gastos-stat').innerText = `$${g.toLocaleString()}`;
-    document.getElementById('total-deudas-stat').innerText = `$${d.toLocaleString()}`;
-
-    const c1 = document.getElementById('grafico-categorias').getContext('2d');
-    if(chart1) chart1.destroy();
-    chart1 = new Chart(c1, {
-        type: 'doughnut',
-        data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6'] }] },
-        options: { plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } } }
-    });
-
-    const c2 = document.getElementById('grafico-comparativo').getContext('2d');
-    if(chart2) chart2.destroy();
-    chart2 = new Chart(c2, {
-        type: 'bar',
-        data: { labels: ['Gastos', 'Deudas'], datasets: [{ data: [g, d], backgroundColor: ['#3b82f6', '#ef4444'] }] },
-        options: { scales: { y: { ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } }, plugins: { legend: { display: false } } }
-    });
-}
+window.abonarDeuda = async (id, pagadoActual, total) => {
+    const
