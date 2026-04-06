@@ -11,6 +11,7 @@
 </head>
 <body>
 
+    <!-- PANTALLA DE LOGIN -->
     <div id="login-screen" class="login-container active">
         <div class="glass-card text-center">
             <div class="logo justify-center mb-2">
@@ -23,7 +24,10 @@
         </div>
     </div>
 
+    <!-- APLICACIÓN PRINCIPAL -->
     <div id="app-screen" class="app-container" style="display: none;">
+        
+        <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="logo mb-2">
                 <i class="fa-solid fa-rocket"></i> <span>Gastos AI</span>
@@ -35,7 +39,7 @@
                     <span id="user-name">Usuario</span>
                     <small>Online</small>
                 </div>
-                <button id="btn-logout" class="btn-icon"><i class="fa-solid fa-power-off"></i></button>
+                <button id="btn-logout" class="btn-icon" title="Cerrar sesión"><i class="fa-solid fa-power-off"></i></button>
             </div>
 
             <div class="month-selector mb-2">
@@ -50,7 +54,10 @@
             </nav>
         </aside>
 
+        <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
+            
+            <!-- PESTAÑA: GASTOS -->
             <section id="tab-registro" class="content-section active">
                 <header class="section-header">
                     <h2>Gestión de Gastos</h2>
@@ -88,24 +95,38 @@
                 </div>
             </section>
 
+            <!-- PESTAÑA: DEUDAS Y CUOTAS -->
             <section id="tab-deudas" class="content-section">
                 <header class="section-header">
                     <h2>Panel de Deudas</h2>
-                    <p>Si el monto pagado es 0, la deuda aparecerá como pendiente total.</p>
+                    <p>Ingresa deudas de un solo pago o divídelas en cuotas mensuales.</p>
                 </header>
 
                 <form id="form-deuda" class="glass-card mb-2">
                     <div class="form-group">
                         <label>Nombre de la Deuda</label>
-                        <input type="text" id="desc-deuda" placeholder="Ej: Crédito Universitario" required>
+                        <input type="text" id="desc-deuda" placeholder="Ej: Crédito Automotriz" required>
                     </div>
+                    
+                    <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="es-cuotas" style="width: auto;">
+                        <label for="es-cuotas" style="cursor: pointer; color: #fff;">Es una deuda en cuotas</label>
+                    </div>
+
+                    <div class="form-row" id="div-cuotas" style="display: none; margin-bottom: 1.2rem;">
+                        <div class="form-group">
+                            <label>Cantidad de Cuotas</label>
+                            <input type="number" id="num-cuotas" placeholder="Ej: 12" min="2">
+                        </div>
+                    </div>
+
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Monto Total ($)</label>
+                            <label>Monto Total de la Deuda ($)</label>
                             <input type="number" id="monto-deuda" placeholder="0" required>
                         </div>
                         <div class="form-group">
-                            <label>Abono / Pagado ($)</label>
+                            <label>Abono Inicial ($)</label>
                             <input type="number" id="pagado-deuda" value="0">
                         </div>
                     </div>
@@ -118,6 +139,7 @@
                 </div>
             </section>
 
+            <!-- PESTAÑA: ESTADÍSTICAS -->
             <section id="tab-estadisticas" class="content-section">
                 <header class="section-header">
                     <h2>Dashboard Financiero</h2>
