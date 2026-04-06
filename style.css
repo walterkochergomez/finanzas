@@ -135,3 +135,97 @@ canvas { max-width: 100% !important; max-height: 300px !important; }
 
 .chart-title { font-size: 1rem; color: var(--text-dim); margin-bottom: 15px; text-align: center; width: 100%; }
 .chart-card { flex-direction: column; justify-content: flex-start; }
+
+/* =========================================
+   DISEÑO RESPONSIVO (OPTIMIZACIÓN MÓVIL)
+   ========================================= */
+
+@media (max-width: 850px) {
+    /* Cambia la estructura de horizontal a vertical */
+    .app-container {
+        flex-direction: column;
+    }
+    
+    /* La barra lateral se vuelve una cabecera fija en la parte superior */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        padding: 1rem;
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    /* Ocultar el logo para ahorrar espacio en celular */
+    .sidebar .logo {
+        display: none;
+    }
+
+    /* Agrupar Info de Usuario y Selector de Mes */
+    .user-info {
+        margin-top: 0;
+        margin-bottom: 10px;
+        padding: 8px;
+    }
+
+    .month-navigation {
+        margin-bottom: 10px;
+    }
+
+    .month-navigation label {
+        display: none; /* Ocultamos la etiqueta para ahorrar altura */
+    }
+
+    /* El menú de navegación se vuelve horizontal y scrolleable con el dedo */
+    .menu-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 5px;
+        margin-top: 0;
+    }
+
+    /* Esconde la barra de scroll horizontal en navegadores móviles */
+    .menu-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .nav-item {
+        white-space: nowrap;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+
+    /* Reducir los márgenes del contenido principal */
+    .main-content {
+        padding: 1.5rem 1rem;
+    }
+
+    /* Los formularios que estaban en fila (mitad y mitad) ahora se apilan uno sobre otro */
+    .form-row, .row-flex {
+        flex-direction: column;
+    }
+
+    /* Ajuste de gráficos para que no se desborden */
+    .chart-card {
+        width: 100%;
+    }
+}
+
+/* Ajustes para pantallas de celulares muy pequeños (ej: iPhone SE) */
+@media (max-width: 480px) {
+    .kpi-row {
+        grid-template-columns: 1fr; /* Muestra 1 KPI por fila en vez de 2 */
+    }
+    
+    .section-header h2 {
+        font-size: 1.5rem;
+    }
+
+    .stat-card h2 {
+        font-size: 2rem;
+    }
+}
