@@ -1,106 +1,135 @@
-let gastos = JSON.parse(localStorage.getItem('gastos')) || [];
-let chartInstance = null;
+// Importaciones de Firebase (Asegúrate de poner tu configuración real)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Selectores
-const tabs = document.querySelectorAll('.nav-item');
-const sections = document.querySelectorAll('.content-section');
+const firebaseConfig = {
+    // Pega aquí la configuración que te da Firebase
+    apiKey: "AIzaSyAjWtEeVUDQFrPYGXRpRxK9J_Gf4M77lyw",
+    authDomain: "organizador-academico-35d9d.firebaseapp.com",
+    projectId: "organizador-academico-35d9d",
+    storageBucket: "organizador-academico-35d9d.firebasestorage.app",
+    messagingSenderId: "191522787552",
+    appId: "1:191522787552:web:7261ba505d1558fc628085"
+};
 
-// Manejo de Navegación
-tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        sections.forEach(s => s.classList.remove('active'));
-        
-        tab.classList.add('active');
-        const target = tab.id.replace('btn-', 'tab-');
-        document.getElementById(target).classList.add('active');
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+let currentUser = null;
 
-        if(target === 'tab-estadisticas') actualizarEstadisticas();
-    });
+// --- ELEMENTOS DEL DOM ---
+const loginScreen = document.getElementById('login-screen');
+const appScreen = document.getElementById('app-screen');
+const mesSelector = document.getElementById('mes-actual');
+
+// --- INICIALIZAR MES ACTUAL ---
+const hoy = new Date();
+const mesActualString = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+mesSelector.value = mesActualString;
+
+// Al cambiar el mes, recargamos los datos
+mesSelector.addEventListener('change', () => {
+    cargarDatosDelMes(mesSelector.value);
 });
 
-// Guardar Gasto
-document.getElementById('form-gasto').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const desc = document.getElementById('descripcion').value;
-    const monto = parseFloat(document.getElementById('monto').value);
-    const cat = document.getElementById('categoria').value;
-
-    const nuevoGasto = { id: Date.now(), descripcion: desc, monto, categoria: cat };
-    gastos.push(nuevoGasto);
-    localStorage.setItem('gastos', JSON.stringify(gastos));
-    
-    e.target.reset();
-    renderizarHistorial();
+// --- AUTENTICACIÓN ---
+document.getElementById('btn-login').addEventListener('click', async () => {
+    const provider = new GoogleAuthProvider();
+    try { await signInWithPopup(auth, provider); } catch (error) { console.error("Error login:", error); }
 });
 
-// Función para Borrar Gasto
-function eliminarGasto(id) {
-    gastos = gastos.filter(g => g.id !== id);
-    localStorage.setItem('gastos', JSON.stringify(gastos));
-    renderizarHistorial();
-    // Si estamos en la pestaña de estadísticas, refrescar gráfico
-    if (document.getElementById('tab-estadisticas').classList.contains('active')) {
-        actualizarEstadisticas();
+document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        currentUser = user;
+        loginScreen.style.display = 'none';
+        appScreen.style.display = 'flex';
+        document.getElementById('user-name').innerText = user.displayName.split(' ')[0];
+        document.getElementById('user-avatar').src = user.photoURL;
+        cargarDatosDelMes(mesSelector.value); // Cargar los datos de este usuario y este mes
+    } else {
+        currentUser = null;
+        loginScreen.style.display = 'flex';
+        appScreen.style.display = 'none';
     }
-}
+});
 
-// Renderizar Historial
-function renderizarHistorial() {
-    const contenedor = document.getElementById('lista-gastos');
-    contenedor.innerHTML = '';
+// --- LÓGICA DE DEUDAS Y ARRASTRE ---
+document.getElementById('form-deuda').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const desc = document.getElementById('desc-deuda').value;
+    const total = parseFloat(document.getElementById('monto-deuda').value);
+    const pagado = parseFloat(document.getElementById('pagado-deuda').value);
+    const periodo = mesSelector.value; // Guardamos en el mes que esté seleccionado
 
-    // Mostramos los últimos primero
-    [...gastos].reverse().forEach(g => {
-        const div = document.createElement('div');
-        div.className = 'gasto-item';
-        div.innerHTML = `
-            <div class="gasto-info">
-                <h4>${g.descripcion}</h4>
-                <span>${g.categoria}</span>
-            </div>
-            <div class="gasto-monto">
-                $${g.monto.toLocaleString()}
-                <button class="btn-delete" onclick="eliminarGasto(${g.id})">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-            </div>
-        `;
-        contenedor.appendChild(div);
-    });
-}
+    try {
+        await addDoc(collection(db, "deudas"), {
+            userId: currentUser.uid,
+            descripcion: desc,
+            montoTotal: total,
+            montoPagado: pagado,
+            periodo: periodo,
+            fechaRegistro: Date.now()
+        });
+        e.target.reset();
+        cargarDatosDelMes(periodo); // Recargar
+    } catch (e) {
+        console.error("Error al añadir deuda: ", e);
+    }
+});
 
-// Estadísticas
-function actualizarEstadisticas() {
-    const total = gastos.reduce((acc, g) => acc + g.monto, 0);
-    document.getElementById('total-gastado').innerText = `$${total.toLocaleString()}`;
+async function cargarDatosDelMes(periodo) {
+    if (!currentUser) return;
+    
+    // 1. Cargar Gastos del mes (Lógica omitida, similar a deudas)
+    
+    // 2. Cargar Deudas
+    const qDeudas = query(collection(db, "deudas"), where("userId", "==", currentUser.uid));
+    const snapshot = await getDocs(qDeudas);
+    
+    const listaDeudasDiv = document.getElementById('lista-deudas');
+    listaDeudasDiv.innerHTML = '';
+    
+    let totalAdeudadoMesActual = 0;
 
-    const dataMap = gastos.reduce((acc, g) => {
-        acc[g.categoria] = (acc[g.categoria] || 0) + g.monto;
-        return acc;
-    }, {});
+    snapshot.forEach(doc => {
+        const deuda = doc.data();
+        const id = doc.id;
+        const pendiente = deuda.montoTotal - deuda.montoPagado;
 
-    const ctx = document.getElementById('grafico-categorias').getContext('2d');
-    if (chartInstance) chartInstance.destroy();
-
-    chartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(dataMap),
-            datasets: [{
-                data: Object.values(dataMap),
-                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
-                borderWidth: 0,
-                hoverOffset: 20
-            }]
-        },
-        options: {
-            plugins: {
-                legend: { position: 'bottom', labels: { color: '#fff', font: { size: 14 } } }
-            }
+        // Si la deuda es de ESTE mes
+        if (deuda.periodo === periodo) {
+            renderizarTarjetaDeuda(id, deuda.descripcion, deuda.montoTotal, deuda.montoPagado, pendiente, false);
+            totalAdeudadoMesActual += pendiente;
+        } 
+        // LÓGICA DE ARRASTRE: Si la deuda es de un mes ANTERIOR y el pendiente es > 0
+        else if (deuda.periodo < periodo && pendiente > 0) {
+            renderizarTarjetaDeuda(id, `${deuda.descripcion} (Arrastre ${deuda.periodo})`, pendiente, 0, pendiente, true);
+            totalAdeudadoMesActual += pendiente;
         }
     });
 }
 
-// Inicializar
-renderizarHistorial();
+function renderizarTarjetaDeuda(id, desc, total, pagado, pendiente, esArrastre) {
+    const div = document.createElement('div');
+    // Si el pendiente es 0 o menor, está a favor/saldado (verde), si no, en contra (rojo)
+    const estadoClase = pendiente <= 0 ? 'text-success' : 'text-danger';
+    const estadoTexto = pendiente <= 0 ? 'Saldado / A favor' : `Pendiente: $${pendiente.toLocaleString()}`;
+
+    div.className = `gasto-item ${esArrastre ? 'arrastre' : ''}`;
+    div.innerHTML = `
+        <div class="gasto-info">
+            <h4>${desc}</h4>
+            <span style="color: #94a3b8;">Total:$${total.toLocaleString()} | Pagado: $${pagado.toLocaleString()}</span>
+        </div>
+        <div class="gasto-monto">
+            <span class="${estadoClase}" style="font-weight: bold;">${estadoTexto}</span>
+        </div>
+    `;
+    document.getElementById('lista-deudas').appendChild(div);
+}
+
+// Navegación (Igual que antes)
+// ...
