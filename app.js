@@ -1,15 +1,16 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// === REEMPLAZA ESTO CON LA CONFIGURACIÓN DE TU FIREBASE ===
+// === CONFIGURACIÓN FIREBASE (RELLENA ESTO) ===
 const firebaseConfig = {
-    apiKey: "AIzaSyAjWtEeVUDQFrPYGXRpRxK9J_Gf4M77lyw",
-  authDomain: "organizador-academico-35d9d.firebaseapp.com",
-  projectId: "organizador-academico-35d9d",
-  storageBucket: "organizador-academico-35d9d.firebasestorage.app",
-  messagingSenderId: "191522787552",
-  appId: "1:191522787552:web:7261ba505d1558fc628085"
+    apiKey: "AIzaSyCO5b4r8U01bSum87YPhnj-CS80-qaGmNE",
+  authDomain: "finanzas-67c25.firebaseapp.com",
+  projectId: "finanzas-67c25",
+  storageBucket: "finanzas-67c25.firebasestorage.app",
+  messagingSenderId: "387271798124",
+  appId: "1:387271798124:web:53293a15ef659987ed1749",
+  measurementId: "G-R90VV07EH7"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -17,200 +18,187 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 let currentUser = null;
-let chartCategorias = null;
-let chartComparativo = null;
+let chart1 = null;
+let chart2 = null;
 
-// --- ELEMENTOS DOM ---
-const loginScreen = document.getElementById('login-screen');
-const appScreen = document.getElementById('app-screen');
+// Selectores
 const mesSelector = document.getElementById('mes-actual');
-const tabs = document.querySelectorAll('.nav-item');
-const sections = document.querySelectorAll('.content-section');
-
-// --- INICIALIZAR MES ---
 const hoy = new Date();
 mesSelector.value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
-mesSelector.addEventListener('change', () => cargarDatosDelMes(mesSelector.value));
 
 // --- AUTENTICACIÓN ---
-document.getElementById('btn-login').addEventListener('click', async () => {
-    const provider = new GoogleAuthProvider();
-    try { await signInWithPopup(auth, provider); } catch (error) { console.error("Error login:", error); }
-});
+const loginBtn = document.getElementById('btn-login');
+if(loginBtn) {
+    loginBtn.onclick = async () => {
+        const provider = new GoogleAuthProvider();
+        try { await signInWithPopup(auth, provider); } 
+        catch (e) { console.error("Error en Login:", e); alert("Error al iniciar sesión."); }
+    };
+}
 
-document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+document.getElementById('btn-logout').onclick = () => signOut(auth);
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUser = user;
-        loginScreen.classList.remove('active');
-        appScreen.style.display = 'flex';
-        document.getElementById('user-name').innerText = user.displayName.split(' ')[0];
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-screen').style.display = 'flex';
+        document.getElementById('user-name').innerText = user.displayName;
         document.getElementById('user-avatar').src = user.photoURL;
-        cargarDatosDelMes(mesSelector.value);
+        cargarDatos(mesSelector.value);
     } else {
         currentUser = null;
-        loginScreen.classList.add('active');
-        appScreen.style.display = 'none';
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('app-screen').style.display = 'none';
     }
 });
 
-// --- NAVEGACIÓN DE PESTAÑAS ---
-tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        sections.forEach(s => s.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(tab.id.replace('btn-', 'tab-')).classList.add('active');
-    });
+// --- NAVEGACIÓN ---
+document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+        btn.classList.add('active');
+        const target = btn.id.replace('btn-', 'tab-');
+        document.getElementById(target).classList.add('active');
+        if(target === 'tab-estadisticas') cargarDatos(mesSelector.value);
+    };
 });
 
+mesSelector.onchange = () => cargarDatos(mesSelector.value);
+
 // --- GUARDAR GASTO ---
-document.getElementById('form-gasto').addEventListener('submit', async (e) => {
+document.getElementById('form-gasto').onsubmit = async (e) => {
     e.preventDefault();
-    const gasto = {
+    if(!currentUser) return;
+    
+    const nuevoGasto = {
         userId: currentUser.uid,
         descripcion: document.getElementById('descripcion').value,
         monto: parseFloat(document.getElementById('monto').value),
         categoria: document.getElementById('categoria').value,
         periodo: mesSelector.value,
-        fechaRegistro: Date.now()
+        fecha: Date.now()
     };
-    try {
-        await addDoc(collection(db, "gastos"), gasto);
-        e.target.reset();
-        cargarDatosDelMes(mesSelector.value);
-    } catch (err) { console.error("Error guardando gasto", err); }
-});
 
-// --- GUARDAR DEUDA ---
-document.getElementById('form-deuda').addEventListener('submit', async (e) => {
+    try {
+        await addDoc(collection(db, "gastos"), nuevoGasto);
+        e.target.reset();
+        cargarDatos(mesSelector.value);
+    } catch (err) { console.error("Error guardando gasto:", err); }
+};
+
+// --- GUARDAR DEUDA (CORREGIDO PARA ABONOS $0) ---
+document.getElementById('form-deuda').onsubmit = async (e) => {
     e.preventDefault();
-    const deuda = {
+    if(!currentUser) return;
+
+    const montoTotal = parseFloat(document.getElementById('monto-deuda').value);
+    const abonoInput = document.getElementById('pagado-deuda').value;
+    // Si el campo está vacío, el abono es 0
+    const montoPagado = abonoInput === "" ? 0 : parseFloat(abonoInput);
+
+    const nuevaDeuda = {
         userId: currentUser.uid,
         descripcion: document.getElementById('desc-deuda').value,
-        montoTotal: parseFloat(document.getElementById('monto-deuda').value),
-        montoPagado: parseFloat(document.getElementById('pagado-deuda').value),
+        montoTotal: montoTotal,
+        montoPagado: montoPagado,
         periodo: mesSelector.value,
-        fechaRegistro: Date.now()
+        fecha: Date.now()
     };
+
     try {
-        await addDoc(collection(db, "deudas"), deuda);
+        await addDoc(collection(db, "deudas"), nuevaDeuda);
         e.target.reset();
-        cargarDatosDelMes(mesSelector.value);
-    } catch (err) { console.error("Error guardando deuda", err); }
-});
+        document.getElementById('pagado-deuda').value = 0;
+        cargarDatos(mesSelector.value);
+    } catch (err) { console.error("Error guardando deuda:", err); }
+};
 
-// --- CARGAR DATOS Y PROCESAR ARRASTRE ---
-async function cargarDatosDelMes(periodo) {
-    if (!currentUser) return;
-    
-    // 1. Obtener Gastos
-    const qGastos = query(collection(db, "gastos"), where("userId", "==", currentUser.uid), where("periodo", "==", periodo));
-    const snapGastos = await getDocs(qGastos);
-    const listaGastos = document.getElementById('lista-gastos');
-    listaGastos.innerHTML = '';
-    
-    let totalGastos = 0;
-    const gastosPorCat = {};
+// --- CARGA DE DATOS ---
+async function cargarDatos(periodo) {
+    if(!currentUser) return;
 
-    snapGastos.forEach(doc => {
-        const g = doc.data();
-        totalGastos += g.monto;
-        gastosPorCat[g.categoria] = (gastosPorCat[g.categoria] || 0) + g.monto;
-        
-        listaGastos.innerHTML += `
-            <div class="gasto-item">
-                <div class="gasto-info"><h4>${g.descripcion}</h4><span style="color:#94a3b8">${g.categoria}</span></div>
-                <div class="gasto-monto">$${g.monto.toLocaleString()}
-                    <button class="btn-delete" onclick="eliminarRegistro('gastos', '${doc.id}')"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            </div>`;
+    // Obtener Gastos
+    const qG = query(collection(db, "gastos"), where("userId", "==", currentUser.uid), where("periodo", "==", periodo), orderBy("fecha", "desc"));
+    const snapG = await getDocs(qG);
+    
+    const listaG = document.getElementById('lista-gastos');
+    listaG.innerHTML = '';
+    let totalG = 0;
+    const catsG = {};
+
+    snapG.forEach(docSnap => {
+        const d = docSnap.data();
+        totalG += d.monto;
+        catsG[d.categoria] = (catsG[d.categoria] || 0) + d.monto;
+        listaG.innerHTML += renderItem(docSnap.id, 'gastos', d.descripcion, d.monto, d.categoria);
     });
 
-    // 2. Obtener Deudas
-    const qDeudas = query(collection(db, "deudas"), where("userId", "==", currentUser.uid));
-    const snapDeudas = await getDocs(qDeudas);
-    const listaDeudas = document.getElementById('lista-deudas');
-    listaDeudas.innerHTML = '';
+    // Obtener Deudas
+    const qD = query(collection(db, "deudas"), where("userId", "==", currentUser.uid));
+    const snapD = await getDocs(qD);
     
-    let totalDeudaPendiente = 0;
+    const listaD = document.getElementById('lista-deudas');
+    listaD.innerHTML = '';
+    let totalDPendiente = 0;
 
-    snapDeudas.forEach(doc => {
-        const d = doc.data();
+    snapD.forEach(docSnap => {
+        const d = docSnap.data();
         const pendiente = d.montoTotal - d.montoPagado;
-
-        if (d.periodo === periodo) {
-            renderizarDeuda(listaDeudas, doc.id, d.descripcion, d.montoTotal, d.montoPagado, pendiente, false);
-            totalDeudaPendiente += pendiente;
-        } else if (d.periodo < periodo && pendiente > 0) {
-            renderizarDeuda(listaDeudas, doc.id, `${d.descripcion} (Arrastre ${d.periodo})`, pendiente, 0, pendiente, true);
-            totalDeudaPendiente += pendiente;
+        
+        if(d.periodo === periodo || (d.periodo < periodo && pendiente > 0)) {
+            const esArrastre = d.periodo < periodo;
+            totalDPendiente += pendiente;
+            listaD.innerHTML += renderDeudaItem(docSnap.id, d.descripcion, d.montoTotal, d.montoPagado, pendiente, esArrastre);
         }
     });
 
-    // 3. Actualizar Estadísticas
-    actualizarEstadisticas(totalGastos, totalDeudaPendiente, gastosPorCat);
+    renderCharts(totalG, totalDPendiente, catsG);
 }
 
-function renderizarDeuda(contenedor, id, desc, total, pagado, pendiente, esArrastre) {
-    const estado = pendiente <= 0 ? `<span class="text-success">Saldado</span>` : `<span class="text-danger">Pendiente: $${pendiente.toLocaleString()}</span>`;
-    contenedor.innerHTML += `
-        <div class="gasto-item ${esArrastre ? 'arrastre' : ''}">
-            <div class="gasto-info"><h4>${desc}</h4><span style="color:#94a3b8">Total:$${total.toLocaleString()} | Pag. $${pagado.toLocaleString()}</span></div>
-            <div class="gasto-monto">${estado}
-                <button class="btn-delete" onclick="eliminarRegistro('deudas', '${id}')"><i class="fa-solid fa-trash"></i></button>
-            </div>
-        </div>`;
+// Auxiliares de renderizado
+function renderItem(id, col, desc, monto, cat) {
+    return `<div class="gasto-item">
+        <div class="gasto-info"><h4>${desc}</h4><span>${cat}</span></div>
+        <div class="gasto-monto">$${monto.toLocaleString()} 
+        <button class="btn-delete" onclick="borrarDoc('${col}','${id}')"><i class="fa-solid fa-trash"></i></button></div>
+    </div>`;
 }
 
-// --- BORRAR REGISTRO (Exponemos la función al entorno global para que funcione en el onclick) ---
-window.eliminarRegistro = async (coleccion, id) => {
-    if(confirm('¿Estás seguro de eliminar este registro?')) {
-        try {
-            await deleteDoc(doc(db, coleccion, id));
-            cargarDatosDelMes(mesSelector.value); // Recargar
-        } catch (error) { console.error("Error borrando", error); }
+function renderDeudaItem(id, desc, total, pagado, pendiente, arrastre) {
+    return `<div class="gasto-item ${arrastre ? 'arrastre' : ''}">
+        <div class="gasto-info"><h4>${desc} ${arrastre ? '(Arrastre)' : ''}</h4><span>Total: $${total} | Pagado: $${pagado}</span></div>
+        <div class="gasto-monto"><span class="text-danger">$${pendiente}</span>
+        <button class="btn-delete" onclick="borrarDoc('deudas','${id}')"><i class="fa-solid fa-trash"></i></button></div>
+    </div>`;
+}
+
+// Global para borrar
+window.borrarDoc = async (col, id) => {
+    if(confirm("¿Eliminar este registro?")) {
+        await deleteDoc(doc(db, col, id));
+        cargarDatos(mesSelector.value);
     }
 };
 
-// --- ESTADÍSTICAS (Gráficos) ---
-function actualizarEstadisticas(totalGastos, totalDeuda, gastosPorCat) {
-    document.getElementById('total-gastos-stat').innerText = `$${totalGastos.toLocaleString()}`;
-    document.getElementById('total-deudas-stat').innerText = `$${totalDeuda.toLocaleString()}`;
+function renderCharts(g, d, cats) {
+    document.getElementById('total-gastos-stat').innerText = `$${g.toLocaleString()}`;
+    document.getElementById('total-deudas-stat').innerText = `$${d.toLocaleString()}`;
 
-    // Gráfico Dona (Categorías)
-    const ctxCat = document.getElementById('grafico-categorias').getContext('2d');
-    if (chartCategorias) chartCategorias.destroy();
-    chartCategorias = new Chart(ctxCat, {
+    const c1 = document.getElementById('grafico-categorias').getContext('2d');
+    if(chart1) chart1.destroy();
+    chart1 = new Chart(c1, {
         type: 'doughnut',
-        data: {
-            labels: Object.keys(gastosPorCat),
-            datasets: [{
-                data: Object.values(gastosPorCat),
-                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
-                borderWidth: 0
-            }]
-        },
-        options: { plugins: { legend: { position: 'right', labels: { color: '#fff' } } } }
+        data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6'] }] },
+        options: { plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } } }
     });
 
-    // Gráfico Barras (Gastos vs Deudas)
-    const ctxComp = document.getElementById('grafico-comparativo').getContext('2d');
-    if (chartComparativo) chartComparativo.destroy();
-    chartComparativo = new Chart(ctxComp, {
+    const c2 = document.getElementById('grafico-comparativo').getContext('2d');
+    if(chart2) chart2.destroy();
+    chart2 = new Chart(c2, {
         type: 'bar',
-        data: {
-            labels: ['Flujo de Caja', 'Compromisos'],
-            datasets: [{
-                data: [totalGastos, totalDeuda],
-                backgroundColor: ['#3b82f6', '#ef4444'],
-                borderRadius: 8
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } }, x: { ticks: { color: '#fff' } } }
-        }
+        data: { labels: ['Gastos', 'Deudas'], datasets: [{ data: [g, d], backgroundColor: ['#3b82f6', '#ef4444'] }] },
+        options: { scales: { y: { ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } }, plugins: { legend: { display: false } } }
     });
 }
