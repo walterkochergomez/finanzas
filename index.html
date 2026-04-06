@@ -42,12 +42,22 @@
                 <button id="btn-logout" class="btn-icon" title="Cerrar sesión"><i class="fa-solid fa-power-off"></i></button>
             </div>
 
-            <div class="month-selector mb-2">
-                <label>Seleccionar Mes</label>
-                <input type="month" id="mes-actual" class="w-100">
+            <!-- NAVEGACIÓN DE MESES -->
+            <div class="month-navigation mb-2">
+                <label>Periodo de Análisis</label>
+                <div class="nav-controls">
+                    <button id="prev-month" class="btn-nav-month" title="Mes anterior">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <input type="month" id="mes-actual" class="month-input">
+                    <button id="next-month" class="btn-nav-month" title="Mes siguiente">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
 
             <nav class="menu-nav">
+                <button id="btn-ingresos" class="nav-item"><i class="fa-solid fa-sack-dollar"></i> Ingresos</button>
                 <button id="btn-registro" class="nav-item active"><i class="fa-solid fa-receipt"></i> Mis Gastos</button>
                 <button id="btn-deudas" class="nav-item"><i class="fa-solid fa-hand-holding-dollar"></i> Deudas</button>
                 <button id="btn-estadisticas" class="nav-item"><i class="fa-solid fa-chart-line"></i> Análisis</button>
@@ -56,6 +66,43 @@
 
         <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
+
+            <!-- PESTAÑA: INGRESOS -->
+            <section id="tab-ingresos" class="content-section">
+                <header class="section-header">
+                    <h2>Entradas de Dinero</h2>
+                    <p>Registra sueldos, pagos y cualquier dinero que recibas.</p>
+                </header>
+
+                <form id="form-ingreso" class="glass-card mb-2">
+                    <div class="form-group">
+                        <label>Origen del Ingreso</label>
+                        <input type="text" id="desc-ingreso" placeholder="Ej: Sueldo mensual, Venta laptop" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Monto percibido ($)</label>
+                            <input type="number" id="monto-ingreso" placeholder="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoría</label>
+                            <select id="cat-ingreso" required>
+                                <option value="Sueldo">💼 Sueldo</option>
+                                <option value="Honorarios">📄 Honorarios</option>
+                                <option value="Negocios">🏪 Negocios / Ventas</option>
+                                <option value="Inversiones">📈 Inversiones</option>
+                                <option value="Otros">✨ Otros</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary btn-success">Registrar Ingreso</button>
+                </form>
+
+                <div class="history-section">
+                    <h3>Ingresos del Periodo</h3>
+                    <div id="lista-ingresos" class="history-grid"></div>
+                </div>
+            </section>
             
             <!-- PESTAÑA: GASTOS -->
             <section id="tab-registro" class="content-section active">
@@ -147,6 +194,10 @@
                 
                 <div class="stats-grid">
                     <div class="row-flex mb-2">
+                        <div class="glass-card stat-card">
+                            <span>Total Ingresos</span>
+                            <h2 id="total-ingresos-stat" class="text-success">$0</h2>
+                        </div>
                         <div class="glass-card stat-card">
                             <span>Gastos Reales</span>
                             <h2 id="total-gastos-stat" class="text-accent">$0</h2>
