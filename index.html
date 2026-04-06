@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finanzas Pro | Dashboard</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b0e14">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -257,5 +259,15 @@
     </div>
 
     <script type="module" src="app.js"></script>
+    <!-- Script para registrar el Service Worker (PWA) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('PWA: Service Worker registrado con éxito.', reg))
+                    .catch(err => console.error('PWA: Error al registrar Service Worker.', err));
+            });
+        }
+    </script>
 </body>
 </html>
